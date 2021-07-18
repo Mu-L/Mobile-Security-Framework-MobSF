@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 def set_ext_api(file_path):
-    """Smart Function to set Extenstion."""
+    """Smart Function to set Extension."""
     ext = file_path.split('.')[-1]
     if ext == 'plist':
         return 'plist'
@@ -116,7 +116,7 @@ def run(request, api=False):
             app_dir = os.path.join(settings.UPLD_DIR, md5_hash + '/')
             cls_dump_file = os.path.join(app_dir, 'classdump.txt')
             if is_file_exists(cls_dump_file):
-                with io.open(cls_dump_file,
+                with io.open(cls_dump_file,  # lgtm [py/path-injection]
                              mode='r',
                              encoding='utf8',
                              errors='ignore') as flip:

@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import tarfile
+from json import load
 from pathlib import Path
 
 from mobsf.MobSF.utils import (
@@ -28,11 +29,11 @@ def run_analysis(apk_dir, md5_hash, package):
     domains = {}
     clipboard = []
     # Collect Log data
-    datas = get_log_data(apk_dir, package)
+    data = get_log_data(apk_dir, package)
     clip_tag = 'I/CLIPDUMP-INFO-LOG'
     clip_tag2 = 'I CLIPDUMP-INFO-LOG'
     # Collect Clipboard
-    for log_line in datas['logcat']:
+    for log_line in data['logcat']:
         if clip_tag in log_line:
             clipboard.append(log_line.replace(clip_tag, 'Process ID '))
         if clip_tag2 in log_line:
@@ -43,7 +44,7 @@ def run_analysis(apk_dir, md5_hash, package):
         r'((?:https?://|s?ftps?://|file://|'
         r'javascript:|data:|www\d{0,3}'
         r'[.])[\w().=/;,#:@?&~*+!$%\'{}-]+)', re.UNICODE)
-    urls = re.findall(url_pattern, datas['traffic'].lower())
+    urls = re.findall(url_pattern, data['traffic'].lower())
     if urls:
         urls = list(set(urls))
     else:
@@ -55,7 +56,7 @@ def run_analysis(apk_dir, md5_hash, package):
     # Email Etraction Regex
     emails = []
     regex = re.compile(r'[\w.-]{1,20}@[\w-]{1,20}\.[\w]{2,10}')
-    for email in regex.findall(datas['traffic'].lower()):
+    for email in regex.findall(data['traffic'].lower()):
         if (email not in emails) and (not email.startswith('//')):
             emails.append(email)
     # Tar dump and fetch files
@@ -67,6 +68,7 @@ def run_analysis(apk_dir, md5_hash, package):
     analysis_result['xml'] = all_files['xml']
     analysis_result['sqlite'] = all_files['sqlite']
     analysis_result['other_files'] = all_files['others']
+    analysis_result['tls_tests'] = get_tls_logs(apk_dir, md5_hash)
     return analysis_result
 
 
@@ -112,6 +114,15 @@ def get_screenshots(md5_hash, download_dir):
     return result
 
 
+def get_tls_logs(apk_dir, md5_hash):
+    """Get TLS/SSL test logs."""
+    out = Path(apk_dir) / 'mobsf_tls_tests.json'
+    if not out.exists():
+        return None
+    with out.open(encoding='utf-8') as src:
+        return load(src)
+
+
 def get_log_data(apk_dir, package):
     """Get Data for analysis."""
     logcat_data = []
@@ -133,26 +144,26 @@ def get_log_data(apk_dir, package):
                      errors='ignore') as flip:
             web_data = flip.read()
     if is_file_exists(logcat):
-        with io.open(logcat,
+        with io.open(logcat,  # lgtm [py/path-injection]
                      mode='r',
                      encoding='utf8',
                      errors='ignore') as flip:
             logcat_data = flip.readlines()
             traffic = ''.join(logcat_data)
     if is_file_exists(xlogcat):
-        with io.open(xlogcat,
+        with io.open(xlogcat,  # lgtm [py/path-injection]
                      mode='r',
                      encoding='utf8',
                      errors='ignore') as flip:
             droidmon_data = flip.read()
     if is_file_exists(apimon):
-        with io.open(apimon,
+        with io.open(apimon,  # lgtm [py/path-injection]
                      mode='r',
                      encoding='utf8',
                      errors='ignore') as flip:
             apimon_data = flip.read()
     if is_file_exists(fd_logs):
-        with io.open(fd_logs,
+        with io.open(fd_logs,  # lgtm [py/path-injection]
                      mode='r',
                      encoding='utf8',
                      errors='ignore') as flip:
@@ -206,7 +217,7 @@ def get_app_files(apk_dir, md5_hash, package):
                         all_files['xml'].append(
                             {'type': 'xml', 'file': fileparam})
                     else:
-                        with open(file_path,
+                        with open(file_path,  # lgtm [py/path-injection]
                                   'r',
                                   encoding='ISO-8859-1') as flip:
                             file_cnt_sig = flip.read(6)
